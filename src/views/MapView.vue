@@ -227,10 +227,9 @@ const initMap = async () => {
     
     // 使用用户位置或默认位置
     const center = userLocation || [116.397428, 39.90923]
-    const zoom = userLocation ? 12 : 10
     
     map.value = await createMap('map-container', {
-      zoom: zoom,
+      zoom: 6,
       center: center,
       mapStyle: 'amap://styles/normal',
       viewMode: '3D', //地图模式
@@ -238,6 +237,13 @@ const initMap = async () => {
     })
 
     console.log('地图初始化成功')
+
+    // 刷新后延迟执行飞入动画
+    map.value.on('complete', () => {
+      setTimeout(() => {
+        map.value.setZoomAndCenter(12, center, false, 1000) // 动画时间：1000ms
+      }, 300)
+    })
     
     // 如果获取到用户位置，添加标记
     if (userLocation) {
@@ -337,9 +343,9 @@ const addUserLocationMarker = (longitude: number, latitude: number) => {
       position: [longitude, latitude],
       title: '我的位置',
       icon: new window.AMap.Icon({
-        size: new window.AMap.Size(22, 22), // 调整图标大小
+        size: new window.AMap.Size(25, 25), // 调整图标大小
         image: '/user_loc_icon.png', // 使用用户提供的图片
-        imageSize: new window.AMap.Size(22, 22) // 确保图片按指定大小显示
+        imageSize: new window.AMap.Size(25, 25) // 确保图片按指定大小显示
       }),
       offset: new window.AMap.Pixel(-11, -11), // 调整偏移量使图标居中
       zIndex: 1000 // 确保用户位置标记在最上层
@@ -453,7 +459,7 @@ const createImageMarkerContent = (factory: Factory): string => {
       background: #409eff;
     ">
       <img 
-        src="${API_BASE + factory.images[0]}" 
+        src="${API_BASE + (factory.images?.[0] || '')}"
         style="width: 100%; height: 100%; object-fit: cover;" 
         onerror="this.style.display='none'"
       />
