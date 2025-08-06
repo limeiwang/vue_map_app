@@ -1,5 +1,5 @@
 import request from './request'
-import type { Factory, PaginationParams, PaginationResponse, FactoryParams } from '@/types'
+import type { Factory, PaginationParams, PaginationResponse, FactoryParams, NearbyFactoryParams } from '@/types'
 
 // 获取工厂列表（分页）
 export const getFactoryList = (params: PaginationParams) => {
@@ -9,6 +9,11 @@ export const getFactoryList = (params: PaginationParams) => {
 // 获取所有工厂（用于地图展示）
 export const getAllFactories = () => {
   return request.get<Factory[]>('/stores/all')
+}
+
+// 获取附近工厂列表（用于图片展示）
+export const getNearbyFactories = (params: NearbyFactoryParams) => {
+  return request.get<{ count: number, data: Factory[], success: boolean }>('/stores/nearby', { params })
 }
 
 // 获取单个工厂详情

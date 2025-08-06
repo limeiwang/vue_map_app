@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Factory, PaginationParams, FactoryParams } from '@/types'
+import type { Factory, PaginationParams, FactoryParams, NearbyFactoryParams } from '@/types'
 import {
   getFactoryList,
   getAllFactories,
+  getNearbyFactories,
   getFactoryById,
   createFactory,
   updateFactory,
@@ -19,9 +20,15 @@ export const useFactoryStore = defineStore('factory', () => {
   const currentPage = ref(1)
   const pageSize = ref(10)
   const keyword = ref('')
+  const nearbyFactoryIds = ref<string[]>([])
 
   // 计算属性
   const hasFactories = computed(() => factories.value.length > 0)
+  
+  // 判断工厂是否在附近工厂列表中
+  const isNearbyFactory = (factoryId: string) => {
+    return nearbyFactoryIds.value.includes(factoryId)
+  }
 
   // 获取工厂列表（分页）
   const fetchFactories = async (params?: Partial<PaginationParams>) => {
@@ -95,6 +102,24 @@ export const useFactoryStore = defineStore('factory', () => {
         showImage: false // 默认隐藏图片
       }))
       return response.data.data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 获取附近工厂（用于图片展示）
+  const fetchNearbyFactories = async (params: NearbyFactoryParams) => {
+    try {
+      loading.value = true
+      const response = await getNearbyFactories(params)
+      console.log(response.data, '---response---');
+      
+      // 提取附近工厂的ID列表
+      if (response.data && response.data.data) {
+        nearbyFactoryIds.value = response.data.data.map((item: any) => item.id)
+      }
+      
+      return response.data
     } finally {
       loading.value = false
     }
@@ -201,8 +226,11 @@ export const useFactoryStore = defineStore('factory', () => {
     pageSize,
     keyword,
     hasFactories,
+    nearbyFactoryIds,
+    isNearbyFactory,
     fetchFactories,
     fetchAllFactories,
+    fetchNearbyFactories,
     fetchFactoryById,
     addFactory,
     editFactory,

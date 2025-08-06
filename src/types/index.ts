@@ -59,3 +59,8 @@ export interface FactoryParams {
   latitude: number     // 纬度
   images?: string[]    // 图片
 }
+
+export interface NearbyFactoryParams {
+  latitude: string
+  longitude: string
+}

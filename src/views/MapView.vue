@@ -241,6 +241,10 @@ const initMap = async () => {
     
     // 如果获取到用户位置，添加标记
     if (userLocation) {
+      await factoryStore.fetchNearbyFactories({
+        latitude: userLocation[1].toString(),
+        longitude: userLocation[0].toString()
+      })
       addUserLocationMarker(userLocation[0], userLocation[1])
     }
   } catch (error) {
@@ -321,38 +325,40 @@ const getUserLocation = () => {
   )
 }
 
-// 添加用户位置标记
+/**
+ * 添加用户位置标记
+ * @param longitude 经度
+ * @param latitude 纬度
+ */
 const addUserLocationMarker = (longitude: number, latitude: number) => {
   try {
-    // 创建用户位置标记 - 高德地图风格
+    // 创建用户位置标记 - 使用自定义图标
     const userMarker = new window.AMap.Marker({
       position: [longitude, latitude],
       title: '我的位置',
       icon: new window.AMap.Icon({
-        size: new window.AMap.Size(22, 22),
-        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTEiIGN5PSIxMSIgcj0iMTEiIGZpbGw9IiM0MDlFRkYiIGZpbGwtb3BhY2l0eT0iMC45Ii8+CjxjaXJjbGUgY3g9IjExIiBjeT0iMTEiIHI9IjciIGZpbGw9IndoaXRlIi8+CjxjaXJjbGUgY3g9IjExIiBjeT0iMTEiIHI9IjMiIGZpbGw9IiM0MDlFRkYiLz4KPC9zdmc+'
+        size: new window.AMap.Size(22, 22), // 调整图标大小
+        image: '/user_loc_icon.png', // 使用用户提供的图片
+        imageSize: new window.AMap.Size(22, 22) // 确保图片按指定大小显示
       }),
-      offset: new window.AMap.Pixel(-11, -11),
-      // 添加阴影效果
-      shadow: new window.AMap.Icon({
-        size: new window.AMap.Size(22, 22),
-        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjIiIGhlaWdodD0iMjIiIHZpZXdCb3g9IjAgMCAyMiAyMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTEiIGN5PSIxMSIgcj0iMTEiIGZpbGw9InJnYmEoMCwgMCwgMCwgMC4yKSIvPgo8L3N2Zz4K',
-        anchor: new window.AMap.Pixel(11, 11)
-      })
+      offset: new window.AMap.Pixel(-11, -11), // 调整偏移量使图标居中
+      zIndex: 1000 // 确保用户位置标记在最上层
     })
     
-    // 添加精度圆圈（表示GPS精度）
+    // 添加精度圆圈（表示GPS精度范围）
     const accuracyCircle = new window.AMap.Circle({
       center: [longitude, latitude],
-      radius: 25, // 25米精度圆圈
-      strokeColor: '#409EFF',
-      strokeOpacity: 0.15,
-      strokeWeight: 1,
-      fillColor: '#409EFF',
-      fillOpacity: 0.03,
-      strokeStyle: 'solid'
+      radius: 30, // 30米精度圆圈
+      strokeColor: '#05a4ff',
+      strokeOpacity: 0.8,
+      strokeWeight: 1.5,
+      fillColor: '#FFFFFF',
+      fillOpacity: 0.5,
+      strokeStyle: 'solid',
+      zIndex: 100 // 确保圆圈在标记下方
     })
     
+    // 将标记和精度圆圈添加到地图
     userMarker.setMap(map.value)
     accuracyCircle.setMap(map.value)
     console.log('用户位置标记已添加')
@@ -430,26 +436,91 @@ const loadFactories = async () => {
   }
 }
 
+/**
+ * 创建带有工厂图片的标记内容
+ * @param factory 工厂数据对象
+ * @returns HTML字符串，用于标记显示
+ */
+const createImageMarkerContent = (factory: Factory): string => {
+  return `
+    <div style="
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid #fff;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      background: #409eff;
+    ">
+      <img 
+        src="${API_BASE + factory.images[0]}" 
+        style="width: 100%; height: 100%; object-fit: cover;" 
+        onerror="this.style.display='none'"
+      />
+    </div>
+  `
+}
+
+/**
+ * 创建工厂标记对象
+ * @param factory 工厂数据对象
+ * @returns AMap.Marker 实例
+ */
+const createFactoryMarker = (factory: Factory): any => {
+  // 判断是否为用户附近的工厂
+  const isNearby = factoryStore.isNearbyFactory(factory.id)
+  // 检查工厂是否有图片资源
+  const hasImages = factory.images && factory.images.length > 0
+  
+  // 标记基础配置
+  const markerOptions: any = {
+    position: [factory.longitude, factory.latitude],
+    title: factory.name,
+    offset: new window.AMap.Pixel(-15, -15) // 标记偏移量，使图标中心对准坐标点
+  }
+  
+  // 为附近且有图片的工厂设置特殊的图片标记
+  if (isNearby && hasImages) {
+    markerOptions.content = createImageMarkerContent(factory)
+  }
+  // 其他工厂使用默认标记样式（由高德地图提供）
+  
+  return new window.AMap.Marker(markerOptions)
+}
+
+/**
+ * 处理标记点击事件
+ * @param factory 被点击的工厂数据
+ */
+const handleMarkerClick = (factory: Factory) => {
+  // 设置当前选中的工厂
+  selectedFactory.value = factory
+  // 延迟显示工厂详情抽屉，提供更好的用户体验
+  setTimeout(() => {
+    showFactoryDetail.value = true
+  }, 500)
+}
+
+/**
+ * 在地图上添加所有工厂标记
+ * 会先清除现有标记，然后为每个工厂创建新的标记
+ */
 const addMarkersToMap = () => {
+  // 清除地图上现有的所有标记
   clearMarkers()
   
+  // 遍历所有工厂数据，为每个工厂创建标记
   factoryStore.factories.forEach((factory) => {
-    const marker = new window.AMap.Marker({
-      position: [factory.longitude, factory.latitude],
-      title: factory.name
-    })
-
-
-    marker.on('click', (e: any) => {
-      console.log(factory, 111);
-      
-      selectedFactory.value = factory
-      // showFactoryDetail.value = true
-      setTimeout(() => {
-      showFactoryDetail.value = true
-      }, 500) 
-    })
+    // 创建工厂标记
+    const marker = createFactoryMarker(factory)
+    
+    // 绑定点击事件
+    marker.on('click', () => handleMarkerClick(factory))
+    
+    // 将标记添加到地图上
     marker.setMap(map.value)
+    
+    // 将标记保存到数组中，便于后续管理
     markers.value.push(marker)
   })
 }
