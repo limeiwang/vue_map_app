@@ -15,72 +15,76 @@
     <div id="map-container" class="map-content">
       <!-- 定位按钮 -->
       <div class="location-button" @click="locateToUser">
-        <el-icon><Location /></el-icon>
+        <el-icon>
+          <Location />
+        </el-icon>
       </div>
     </div>
 
     <!-- 底部抽屉 - 高德地图风格 -->
-    <div 
-      v-if="showFactoryDetail && selectedFactory" 
-      class="amap-style-drawer"
-      @click.self="showFactoryDetail = false"
-    >
+    <div v-if="showFactoryDetail && selectedFactory" class="amap-style-drawer" @click.self="showFactoryDetail = false">
       <div class="drawer-content">
         <!-- 拖拽指示器 -->
         <div class="drag-indicator"></div>
-        
+
         <!-- 工厂标题 -->
         <div class="factory-header">
           <h2 class="factory-title">{{ selectedFactory.name }}</h2>
           <div class="factory-subtitle">{{ selectedFactory.address }}</div>
         </div>
-        
+
         <!-- 快速操作按钮 -->
         <div class="quick-actions">
           <div class="action-item" @click="navigateToFactory">
             <div class="action-icon">
-              <el-icon><Location /></el-icon>
+              <el-icon>
+                <Location />
+              </el-icon>
             </div>
             <span class="action-text">导航</span>
           </div>
-          
+
           <div class="action-item" @click="copyContactInfo">
             <div class="action-icon">
-              <el-icon><CopyDocument /></el-icon>
+              <el-icon>
+                <CopyDocument />
+              </el-icon>
             </div>
             <span class="action-text">复制</span>
           </div>
-          
+
           <div v-if="selectedFactory.phone" class="action-item" @click="callFactory">
             <div class="action-icon">
-              <el-icon><Phone /></el-icon>
+              <el-icon>
+                <Phone />
+              </el-icon>
             </div>
             <span class="action-text">电话</span>
           </div>
         </div>
-        
+
         <!-- 详细信息 -->
         <div class="detail-section">
           <div class="section-title">详细信息</div>
-          
+
           <div class="detail-item" v-if="selectedFactory.contact">
             <div class="detail-label">联系人</div>
             <div class="detail-value">{{ selectedFactory.contact }}</div>
           </div>
-          
+
           <div class="detail-item" v-if="selectedFactory.phone">
             <div class="detail-label">联系电话</div>
             <div class="detail-value phone-value" @click="callFactory">
               {{ selectedFactory.phone }}
             </div>
           </div>
-          
+
           <div class="detail-item description-item">
             <div class="detail-label">工厂简介</div>
             <div class="detail-value description-text">{{ selectedFactory.description }}</div>
           </div>
         </div>
-        
+
         <!-- 工厂图片 -->
         <div v-if="selectedFactory.images && selectedFactory.images.length" class="images-section">
           <div class="section-title">工厂图片</div>
@@ -100,10 +104,12 @@
             </div>
           </div>
         </div> -->
-        
+
         <!-- 关闭按钮 -->
         <div class="close-button" @click="showFactoryDetail = false">
-          <el-icon><Close /></el-icon>
+          <el-icon>
+            <Close />
+          </el-icon>
         </div>
       </div>
     </div>
@@ -116,27 +122,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Location, 
-  User, 
-  Phone, 
-  Document, 
-  Picture, 
+import { ElMessage } from 'element-plus'
+import {
+  Location,
+  Phone,
   CopyDocument,
-  ZoomIn,
   Close
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFactoryStore } from '@/stores/factory'
 import type { Factory } from '@/types'
 import coordtransform from 'coordtransform'
-import { 
-  waitForAMapSDK, 
-  createMap, 
-  createMarker, 
-  createCircle, 
-  getUserLocation as getUserLocationUtil 
+import {
+  waitForAMapSDK,
+  createMap,
+  // getUserLocation as getUserLocationUtil
 } from '@/utils/mapSDK'
 
 declare global {
@@ -157,17 +157,17 @@ const map = ref<any>(null)
 const markers = ref<any[]>([])
 
 // 关闭抽屉的处理函数
-const handleCloseDrawer = (done: () => void) => {
-  selectedFactory.value = null
-  done()
-}
+// const handleCloseDrawer = (done: () => void) => {
+//   selectedFactory.value = null
+//   done()
+// }
 
 // 导航到工厂
 const navigateToFactory = () => {
   if (!selectedFactory.value) return
-  
+
   const { latitude, longitude, address } = selectedFactory.value
-  
+
   // 检查是否支持导航
   if (navigator.geolocation) {
     // 使用高德地图导航
@@ -181,10 +181,10 @@ const navigateToFactory = () => {
 // 拨打工厂电话
 const callFactory = () => {
   if (!selectedFactory.value?.phone) return
-  
+
   try {
     window.location.href = `tel:${selectedFactory.value.phone}`
-  } catch (error) {
+  } catch {
     ElMessage.warning('无法拨打电话，请手动拨打：' + selectedFactory.value.phone)
   }
 }
@@ -192,14 +192,14 @@ const callFactory = () => {
 // 复制联系方式
 const copyContactInfo = async () => {
   if (!selectedFactory.value) return
-  
+
   const contactInfo = [
     `工厂名称：${selectedFactory.value.name}`,
     `地址：${selectedFactory.value.address}`,
     selectedFactory.value.contact ? `联系人：${selectedFactory.value.contact}` : '',
     selectedFactory.value.phone ? `电话：${selectedFactory.value.phone}` : ''
   ].filter(Boolean).join('\n')
-  
+
   try {
     await navigator.clipboard.writeText(contactInfo)
     ElMessage.success('联系方式已复制到剪贴板')
@@ -221,13 +221,13 @@ const initMap = async () => {
   try {
     // 等待SDK加载完成
     await waitForAMapSDK()
-    
+
     // 先获取用户位置，再初始化地图
     const userLocation = await getUserLocationAsync()
-    
+
     // 使用用户位置或默认位置
     const center = userLocation || [116.397428, 39.90923]
-    
+
     map.value = await createMap('map-container', {
       zoom: 6,
       center: center,
@@ -244,7 +244,7 @@ const initMap = async () => {
         map.value.setZoomAndCenter(12, center, false, 1000) // 动画时间：1000ms
       }, 300)
     })
-    
+
     // 如果获取到用户位置，添加标记
     if (userLocation) {
       await factoryStore.fetchNearbyFactories({
@@ -280,11 +280,11 @@ const getUserLocationAsync = (): Promise<[number, number] | null> => {
       (position) => {
         const { latitude, longitude } = position.coords
         console.log('原始GPS坐标:', { latitude, longitude })
-        
+
         // 转换坐标系
         const [transformedLng, transformedLat] = transformCoordinate(longitude, latitude)
         console.log('转换后坐标:', { longitude: transformedLng, latitude: transformedLat })
-        
+
         resolve([transformedLng, transformedLat])
       },
       (error) => {
@@ -301,35 +301,35 @@ const getUserLocationAsync = (): Promise<[number, number] | null> => {
 }
 
 // 获取用户当前位置
-const getUserLocation = () => {
-  if (!navigator.geolocation) {
-    console.log('浏览器不支持地理位置')
-    return
-  }
+// const getUserLocation = () => {
+//   if (!navigator.geolocation) {
+//     console.log('浏览器不支持地理位置')
+//     return
+//   }
 
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const { latitude, longitude } = position.coords
-      console.log('获取到用户位置:', { latitude, longitude })
-      
-      // 将地图中心设置为用户位置
-      map.value.setCenter([longitude, latitude])
-      map.value.setZoom(12) // 稍微放大一点
-      
-      // 可选：添加用户位置标记
-      addUserLocationMarker(longitude, latitude)
-    },
-    (error) => {
-      console.log('获取位置失败:', error.message)
-      // 获取位置失败时，保持默认中心点
-    },
-    {
-      enableHighAccuracy: true, // 高精度
-      timeout: 10000, // 10秒超时
-      maximumAge: 60000 // 缓存1分钟
-    }
-  )
-}
+//   navigator.geolocation.getCurrentPosition(
+//     (position) => {
+//       const { latitude, longitude } = position.coords
+//       console.log('获取到用户位置:', { latitude, longitude })
+
+//       // 将地图中心设置为用户位置
+//       map.value.setCenter([longitude, latitude])
+//       map.value.setZoom(12) // 稍微放大一点
+
+//       // 可选：添加用户位置标记
+//       addUserLocationMarker(longitude, latitude)
+//     },
+//     (error) => {
+//       console.log('获取位置失败:', error.message)
+//       // 获取位置失败时，保持默认中心点
+//     },
+//     {
+//       enableHighAccuracy: true, // 高精度
+//       timeout: 10000, // 10秒超时
+//       maximumAge: 60000 // 缓存1分钟
+//     }
+//   )
+// }
 
 /**
  * 添加用户位置标记
@@ -350,7 +350,7 @@ const addUserLocationMarker = (longitude: number, latitude: number) => {
       offset: new window.AMap.Pixel(-11, -11), // 调整偏移量使图标居中
       zIndex: 1000 // 确保用户位置标记在最上层
     })
-    
+
     // 添加精度圆圈（表示GPS精度范围）
     const accuracyCircle = new window.AMap.Circle({
       center: [longitude, latitude],
@@ -363,7 +363,7 @@ const addUserLocationMarker = (longitude: number, latitude: number) => {
       strokeStyle: 'solid',
       zIndex: 100 // 确保圆圈在标记下方
     })
-    
+
     // 将标记和精度圆圈添加到地图
     userMarker.setMap(map.value)
     accuracyCircle.setMap(map.value)
@@ -381,26 +381,26 @@ const locateToUser = () => {
   }
 
   ElMessage.info('正在获取您的位置...')
-  
+
   navigator.geolocation.getCurrentPosition(
     (position) => {
       const { latitude, longitude } = position.coords
       console.log('手动定位 - 原始GPS坐标:', { latitude, longitude })
-      
+
       // 转换坐标系
       const [transformedLng, transformedLat] = transformCoordinate(longitude, latitude)
       console.log('手动定位 - 转换后坐标:', { longitude: transformedLng, latitude: transformedLat })
-      
+
       // 将地图中心设置为用户位置
       map.value.setCenter([transformedLng, transformedLat])
       map.value.setZoom(14) // 放大到街道级别
-      
+
       ElMessage.success('已定位到您的位置')
     },
     (error) => {
       console.error('获取位置失败:', error)
       let message = '获取位置失败'
-      
+
       switch (error.code) {
         case error.PERMISSION_DENIED:
           message = '请允许获取位置权限'
@@ -412,7 +412,7 @@ const locateToUser = () => {
           message = '获取位置超时'
           break
       }
-      
+
       ElMessage.error(message)
     },
     {
@@ -427,7 +427,7 @@ const loadFactories = async () => {
   try {
     loading.value = true
     await factoryStore.fetchAllFactories()
-    
+
     if (factoryStore.factories.length > 0) {
       addMarkersToMap()
       // 移除自动跳转到第一个工厂的逻辑，保持用户当前位置
@@ -448,18 +448,19 @@ const loadFactories = async () => {
  * @returns HTML字符串，用于标记显示
  */
 const createImageMarkerContent = (factory: Factory): string => {
+  // const markerIconUrl = API_BASE + (factory.images?.[0] || '')
+  const markerIconUrl = API_BASE + '/images/2c748f75-901b-4462-899b-8e670adb347b.png'
   return `
     <div style="
       width: 30px;
       height: 30px;
       border-radius: 50%;
       overflow: hidden;
-      border: 2px solid #fff;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
-      background: #409eff;
+      // border: 2px solid #fff;
+      // box-shadow: 0 0 5px rgba(0,0,0,0.3);
     ">
       <img 
-        src="${API_BASE + (factory.images?.[0] || '')}"
+        src="${markerIconUrl}"
         style="width: 100%; height: 100%; object-fit: cover;" 
         onerror="this.style.display='none'"
       />
@@ -477,20 +478,20 @@ const createFactoryMarker = (factory: Factory): any => {
   const isNearby = factoryStore.isNearbyFactory(factory.id)
   // 检查工厂是否有图片资源
   const hasImages = factory.images && factory.images.length > 0
-  
+
   // 标记基础配置
   const markerOptions: any = {
     position: [factory.longitude, factory.latitude],
     title: factory.name,
     offset: new window.AMap.Pixel(-15, -15) // 标记偏移量，使图标中心对准坐标点
   }
-  
+
   // 为附近且有图片的工厂设置特殊的图片标记
   if (isNearby && hasImages) {
     markerOptions.content = createImageMarkerContent(factory)
   }
   // 其他工厂使用默认标记样式（由高德地图提供）
-  
+
   return new window.AMap.Marker(markerOptions)
 }
 
@@ -514,18 +515,18 @@ const handleMarkerClick = (factory: Factory) => {
 const addMarkersToMap = () => {
   // 清除地图上现有的所有标记
   clearMarkers()
-  
+
   // 遍历所有工厂数据，为每个工厂创建标记
   factoryStore.factories.forEach((factory) => {
     // 创建工厂标记
     const marker = createFactoryMarker(factory)
-    
+
     // 绑定点击事件
     marker.on('click', () => handleMarkerClick(factory))
-    
+
     // 将标记添加到地图上
     marker.setMap(map.value)
-    
+
     // 将标记保存到数组中，便于后续管理
     markers.value.push(marker)
   })
@@ -841,13 +842,23 @@ onUnmounted(() => {
 
 /* 动画 */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* 移动端适配 */
@@ -855,65 +866,62 @@ onUnmounted(() => {
   .map-header {
     padding: 12px 16px;
   }
-  
+
   .map-header h1 {
     font-size: 20px;
   }
-  
+
   .header-actions {
     gap: 8px;
   }
-  
+
   /* 移动端抽屉样式调整 */
   .drawer-content {
     max-height: 80vh;
     border-radius: 20px 20px 0 0;
   }
-  
+
   .factory-title {
     font-size: 17px;
   }
-  
+
   .quick-actions {
     padding: 10px 12px;
     gap: 12px;
   }
-  
+
   .action-icon {
     width: 32px;
     height: 32px;
     font-size: 14px;
   }
-  
+
   .detail-section,
   .images-section {
     padding: 10px 12px;
   }
-  
+
   .image-grid {
     grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     gap: 4px;
   }
-  
+
   .close-button {
     top: 12px;
     right: 12px;
     width: 28px;
     height: 28px;
   }
-  
+
   .location-button {
     bottom: 16px;
     right: 16px;
     width: 44px;
     height: 44px;
   }
-  
+
   .location-button .el-icon {
     font-size: 18px;
   }
 }
-
-
-</style> 
- 
+</style>
